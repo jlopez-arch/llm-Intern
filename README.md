@@ -1,12 +1,34 @@
 # llm-Intern
 
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![Node](https://img.shields.io/badge/node-%3E%3D18-brightgreen)](package.json)
+[![MCP](https://img.shields.io/badge/protocol-MCP-blue)](https://modelcontextprotocol.io/)
+![Works with](https://img.shields.io/badge/works%20with-Claude%20Code%20%C2%B7%20Codex%20%C2%B7%20OpenClaw-8a2be2)
+
 Servidor MCP que expone un modelo local de [LM Studio](https://lmstudio.ai/) como
-tools de **Claude Code** y **Codex** — "el intern": delegación de trabajo mecánico o
-masivo a un modelo que corre gratis en tu propia máquina, para no gastar cuota del
-modelo grande en tareas que no la necesitan.
+tools de **Claude Code**, **Codex** y **OpenClaw** (u otro framework de agentes
+local) — "el intern": delegación de trabajo mecánico o masivo a un modelo que corre
+gratis en tu propia máquina, para no gastar cuota del modelo grande en tareas que no
+la necesitan.
 
 No es un reemplazo del modelo grande. Es un ayudante barato para lo mecánico, con
 reglas claras de cuándo conviene usarlo y cuándo no.
+
+```mermaid
+flowchart LR
+    subgraph Modelo grande
+        CC[Claude Code]
+        CX[Codex]
+        OC[OpenClaw / otro agente]
+    end
+    CC -- MCP --> B(("mcp-lm-studio<br/>bridge"))
+    CX -- MCP --> B
+    OC -- MCP o provider directo --> B
+    B -- HTTP local --> LM[LM Studio<br/>localhost:1234]
+    LM --> Q1[qwen3.6-35b-a3b]
+    LM --> Q2[qwen3-coder-30b]
+    LM --> Q3[otros modelos locales]
+```
 
 ## Por qué
 
@@ -24,9 +46,17 @@ criterio y no sea "mandarle cualquier cosa al modelo chico". Ver [`MODELS.md`](M
   - `lm_studio_list_models` — qué hay descargado/cargado en LM Studio.
   - `lm_studio_list_mcp_servers` — qué MCPs puede usar `lm_studio_agent`.
 - **`.claude/skills/intern/`** — Skill de Claude Code (`/intern`) con el protocolo completo.
-- **`templates/`** — snippets para pegar en tu `~/.claude/CLAUDE.md` y `~/.codex/AGENTS.md` (delegación automática, sin invocar el skill a mano), más un `mcp.json` de ejemplo y una plantilla de log de uso.
-- **`MODELS.md`** — qué modelos usar para qué tipo de tarea.
-- **`docs/`** — guías de instalación paso a paso por herramienta.
+- **`templates/`** — snippets para pegar en tu `~/.claude/CLAUDE.md`, `~/.codex/AGENTS.md` u openclaw.json (delegación automática, sin invocar nada a mano), más un `mcp.json` de ejemplo y una plantilla de log de uso.
+- **`MODELS.md`** — qué modelos usar para qué tipo de tarea, con los modelos que ya pasaron por este setup.
+- **`docs/`** — guías de instalación paso a paso por herramienta (Claude Code, Codex, OpenClaw, LM Studio) + [roadmap](docs/roadmap.md) de mejoras en diseño.
+
+## Integraciones
+
+| Herramienta | Cómo se conecta | Guía |
+|---|---|---|
+| **Claude Code** | `claude mcp add` + Skill opcional | [`docs/claude-code-setup.md`](docs/claude-code-setup.md) |
+| **Codex** | `[mcp_servers.lm-studio]` en `~/.codex/config.toml` | [`docs/codex-setup.md`](docs/codex-setup.md) |
+| **OpenClaw / otro framework de agentes** | MCP tool, o LM Studio como provider directo ("intern-first") | [`docs/openclaw-setup.md`](docs/openclaw-setup.md) |
 
 ## Quickstart
 
@@ -41,10 +71,11 @@ cd llm-Intern
 ```
 
 El instalador compila el bridge y, si tenés el CLI `claude`, te ofrece registrarlo.
-Para Codex, o para el resto del setup (Skill, snippets de CLAUDE.md/AGENTS.md), ver:
+Para el resto del setup por herramienta:
 
 - [`docs/claude-code-setup.md`](docs/claude-code-setup.md)
 - [`docs/codex-setup.md`](docs/codex-setup.md)
+- [`docs/openclaw-setup.md`](docs/openclaw-setup.md)
 
 Verificar que todo funciona:
 
@@ -54,14 +85,28 @@ node smoke-test.mjs
 
 ## Cómo se usa
 
-Una vez instalado, en cualquier sesión de Claude Code o Codex:
+Una vez instalado, en cualquier sesión de Claude Code, Codex u OpenClaw:
 
 > "Usá el intern para resumir estos 40 archivos de log."
 
 El modelo grande delega la tarea al MCP `lm-studio`, que corre local contra LM
 Studio. Con las instrucciones de `templates/CLAUDE.snippet.md` /
-`templates/AGENTS.snippet.md` instaladas, la delegación también pasa
-**proactivamente** para tareas mecánicas obvias, sin que lo pidas cada vez.
+`templates/AGENTS.snippet.md` / `templates/openclaw.snippet.md` instaladas, la
+delegación también pasa **proactivamente** para tareas mecánicas obvias, sin que lo
+pidas cada vez.
+
+## Modelos probados y recomendados
+
+Resumen — tabla completa y veredictos en [`MODELS.md`](MODELS.md):
+
+| Modelo | Uso recomendado |
+|---|---|
+| `qwen/qwen3.6-35b-a3b` | ✅ Default — mecánico/un paso, rápido |
+| `qwen/qwen3-coder-30b` | ✅ Código, solo tareas acotadas (no edición multi-archivo grande) |
+| `qwen/qwen3.6-27b` / `gemma-4-31b` | ✅ Complejidad moderada, dense, más lento |
+| `google/gemma-4-26b-a4b-qat` | ⚠️ Razonador — necesita `max_tokens` generoso o thinking off |
+| `qwen/qwen3-4b-2507` | ⚠️ Solo tareas triviales |
+| `liquid/lfm2.5-1.2b` | ❌ Alucina en preguntas factuales — solo transformación de texto pura |
 
 ## Configuración
 

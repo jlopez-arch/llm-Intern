@@ -29,6 +29,23 @@ si dejás dos modelos cargados de sesiones distintas, el bridge puede terminar u
 el equivocado sin avisar. Si vas a probar un modelo puntual, cargalo explícito (o
 pasalo por el parámetro `model`) y descargá los demás.
 
+## Modelos probados
+
+Todos estos pasaron por este setup en algún momento (no solo los recomendados de
+arriba). Verificación empírica, no benchmarks de papers:
+
+| Modelo | Tamaño/tipo | Veredicto |
+|---|---|---|
+| `qwen/qwen3.6-35b-a3b` | MoE ~35B (A3B activos) | ✅ Recomendado — default, rápido, alcanza para la mayoría de la delegación mecánica |
+| `qwen/qwen3-coder-30b` | MoE 30B, code-tuned | ✅ Recomendado para código — pero **solo tareas acotadas** (archivo nuevo con spec clara). En edición multi-archivo grande se puede colgar sin converger. |
+| `qwen/qwen3.6-27b` | Dense 27B | ✅ Recomendado para complejidad moderada — más lento que el MoE, más consistente en tareas que requieren más juicio |
+| `qwen/qwen3-4b-2507` | Dense 4B | ⚠️ Usable para tareas triviales/hardware limitado — no esperar más que eso |
+| `gemma-4-31b-it-mlx` / `gemma-4-31b-it-uncensored-mlx` | Dense 31B | ✅ Alternativa válida a `qwen3.6-27b` para complejidad moderada |
+| `google/gemma-4-26b-a4b-qat` | MoE 26B (A4B activos), razonador | ⚠️ Con `max_tokens` chico puede devolver `content` vacío — gasta el presupuesto en `reasoning_content` antes de llegar a la respuesta. Subir `max_tokens` o desactivar el thinking (ver abajo). |
+| `google/gemma-4-e2b` / `google/gemma-4-e4b` | Dense chico | ⚠️ Probados livianamente, sin veredicto firme — candidatos para tareas triviales |
+| `liquid/lfm2.5-1.2b` | Dense 1.2B | ❌ Muy rápido pero alucina en preguntas que requieren conocimiento real (probado: inventó una definición incorrecta de "servidor MCP"). Solo para transformaciones de texto puramente mecánicas, sin contenido factual. |
+| `text-embedding-nomic-embed-text-v1.5` | Embeddings | No aplica a `lm_studio_generate`/`lm_studio_agent` (no es un modelo de chat) |
+
 ## Cómo descargar estos modelos
 
 Desde la app de LM Studio → pestaña Discover/buscar, o por CLI (`lms get`, si tenés
