@@ -105,7 +105,14 @@ interface LmStudioMcpServerConfig {
   env?: Record<string, string>;
 }
 
-const LMSTUDIO_MCP_JSON = path.join(os.homedir(), ".lmstudio", "mcp.json");
+// Toolbox del intern-agent (lm_studio_agent). Por defecto ~/.lmstudio/mcp.json —
+// la misma fuente de verdad que usa la app de LM Studio. Se puede apuntar a otro
+// archivo con INTERN_MCP_CONFIG para dar al intern un toolbox curado distinto del
+// de la app (útil cuando el bridge lo lanza otro host — p.ej. OpenClaw — y querés
+// que el intern tenga solo un subconjunto acotado de MCPs). El formato es el mismo:
+// { "mcpServers": { "<nombre>": { url|command, ... } } }.
+const LMSTUDIO_MCP_JSON =
+  process.env.INTERN_MCP_CONFIG ?? path.join(os.homedir(), ".lmstudio", "mcp.json");
 
 function loadLmStudioMcpConfig(): Record<string, LmStudioMcpServerConfig> {
   let raw: string;

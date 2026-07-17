@@ -6,10 +6,11 @@
 
 # Registro de uso del intern (LM Studio local)
 
-Registro **compartido entre Claude Code y Codex** de cada delegación a LM Studio vía
-MCP `lm-studio` (`lm_studio_generate` / `lm_studio_agent`) para aprender qué modelo
-sirve para qué tipo de tarea — mismo bridge, mismo modelo, el dato acumulado sirve
-para ambas herramientas juntas.
+Registro **compartido entre Claude Code, Codex y OpenClaw** de cada delegación a LM
+Studio vía MCP `lm-studio` (`lm_studio_generate` / `lm_studio_agent`) para aprender
+qué modelo sirve para qué tipo de tarea — mismo bridge, mismo modelo, el dato
+acumulado sirve para las tres herramientas juntas. Anotá en la columna
+`Herramienta` quién llamó al intern (`Claude Code`, `Codex`, `OpenClaw/main`).
 
 **Es un paso obligatorio del protocolo, en toda sesión que use el intern — no
 opcional.** Apenas el intern termina una tarea, quien lo llamó (Claude Code o Codex)
