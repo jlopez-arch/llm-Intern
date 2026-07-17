@@ -1,0 +1,29 @@
+{
+  "name": "mcp-lm-studio",
+  "version": "0.2.0",
+  "description": "MCP server that exposes a local LM Studio model as tools (\"the intern\"), for delegating bulk/mechanical work out of Claude Code and Codex.",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/fvanlookeren-bit/llm-Intern"
+  },
+  "keywords": ["mcp", "lm-studio", "claude-code", "codex", "local-llm", "qwen"],
+  "type": "module",
+  "bin": {
+    "mcp-lm-studio": "./dist/index.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsx src/index.ts",
+    "smoke-test": "node smoke-test.mjs"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.12.0",
+    "zod": "^3.24.1"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.2",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.2"
+  }
+}

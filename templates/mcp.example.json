@@ -1,0 +1,26 @@
+{
+  "mcpServers": {
+    "filesystem": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@modelcontextprotocol/server-filesystem",
+        "/Users/tu-usuario/Documents",
+        "/Users/tu-usuario/Downloads"
+      ]
+    },
+    "fetch": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-fetch"]
+    },
+    "un-servidor-remoto-http": {
+      "url": "https://tu-servidor-mcp.example.com/mcp",
+      "headers": {
+        "Authorization": "Bearer TU_TOKEN_ACA"
+      }
+    },
+    "un-servidor-local-en-tu-vpn": {
+      "url": "http://100.x.x.x:8000/mcp"
+    }
+  }
+}
