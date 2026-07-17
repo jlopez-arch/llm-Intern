@@ -1,8 +1,9 @@
 # Modelos recomendados
 
-Esto no es teoría — es la tabla que fuimos armando a partir de uso real, registrado
-en un log de puntuación (ver [`templates/intern-usage-log.template.md`](templates/intern-usage-log.template.md)).
-Actualizala vos con tus propios resultados; los modelos y el hardware cambian.
+Guía de arranque para elegir modelo local según el tipo de tarea. Llevá tu propio
+registro de resultados con [`templates/intern-usage-log.template.md`](templates/intern-usage-log.template.md)
+— los modelos y el hardware cambian, así que esta tabla es un punto de partida, no
+una verdad fija.
 
 ## Setup probado (referencia)
 
@@ -27,21 +28,6 @@ dinero (a diferencia del modelo grande que sí cobra por token).
 si dejás dos modelos cargados de sesiones distintas, el bridge puede terminar usando
 el equivocado sin avisar. Si vas a probar un modelo puntual, cargalo explícito (o
 pasalo por el parámetro `model`) y descargá los demás.
-
-## Evidencia real (anonimizada, de uso en producción)
-
-| Modelo | Tarea | Score /10 | Nota |
-|---|---|---|---|
-| `qwen3.6-35b-a3b` | Prueba mínima del bridge (respuesta de 1 línea) | 10 | OK para delegaciones simples |
-| `qwen3.6-35b-a3b` | Inventario de stack/módulos de un proyecto | 5 | Varias atribuciones inventadas, corregidas contra el `package.json` real — **verificar datos concretos, no confiar a ciegas** |
-| `qwen3.6-35b-a3b` | Revisión UX/accesibilidad de una pantalla | 7 | Aceptado en general, corregidos varios puntos específicos |
-| `qwen3-coder-30b` | Editar 2 componentes TSX grandes en simultáneo (multi-archivo) | 1 | Se colgó a las 24 iteraciones, ~20% útil — **NO apto para edición multi-paso en archivos grandes** |
-| `qwen3-coder-30b` | Crear archivo nuevo aislado, 4 funciones puras TS, spec exacta | 8 | Una sola escritura, incluso cazó 2 bugs en la verificación posterior — **apto para archivos nuevos aislados** |
-
-**Conclusión operativa:** el mismo modelo (`qwen3-coder-30b`) fue de 8/10 a 1/10 según
-si la tarea era "un archivo nuevo con spec clara" vs "edición multi-archivo de algo
-existente y grande". El tipo de tarea importa tanto como el modelo — no asumas que
-"es un modelo de código" alcanza para cualquier tarea de código.
 
 ## Cómo descargar estos modelos
 

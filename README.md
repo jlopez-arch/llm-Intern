@@ -13,8 +13,8 @@ reglas claras de cuándo conviene usarlo y cuándo no.
 El modelo grande (Claude, GPT) cobra por token y razona mejor. El modelo local
 (LM Studio) es gratis e ilimitado, pero rinde peor en razonamiento complejo. Este
 repo no es solo el bridge técnico — es también el **protocolo de decisión** (cuándo
-delegar, con qué modelo, cómo medir si valió la pena) que fuimos afinando con uso
-real, no en teoría. Ver [`MODELS.md`](MODELS.md) para la evidencia.
+delegar, con qué modelo, cómo medir si valió la pena) para que la delegación tenga
+criterio y no sea "mandarle cualquier cosa al modelo chico". Ver [`MODELS.md`](MODELS.md).
 
 ## Qué incluye
 
@@ -25,7 +25,7 @@ real, no en teoría. Ver [`MODELS.md`](MODELS.md) para la evidencia.
   - `lm_studio_list_mcp_servers` — qué MCPs puede usar `lm_studio_agent`.
 - **`.claude/skills/intern/`** — Skill de Claude Code (`/intern`) con el protocolo completo.
 - **`templates/`** — snippets para pegar en tu `~/.claude/CLAUDE.md` y `~/.codex/AGENTS.md` (delegación automática, sin invocar el skill a mano), más un `mcp.json` de ejemplo y una plantilla de log de uso.
-- **`MODELS.md`** — qué modelos usar para qué, con datos reales de uso (no solo benchmarks).
+- **`MODELS.md`** — qué modelos usar para qué tipo de tarea.
 - **`docs/`** — guías de instalación paso a paso por herramienta.
 
 ## Quickstart
