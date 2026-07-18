@@ -61,6 +61,16 @@ simple / código / complejidad moderada) como niveles, y solo forzar swap si el
 modelo cargado es de un nivel *inferior* al que la tarea necesita, no cualquier vez
 que no coincida exacto con el `model` pedido.
 
+## Prior art
+
+La integración con OpenClaw (ver [`docs/openclaw-setup.md`](openclaw-setup.md)) tiene
+un problema hermano: ahí un "guard" verifica que el modelo correcto esté cargado
+antes de correr una tarea de agente, chequea contexto/paralelismo, y evita cambiar de
+modelo con una tarea activa salvo que se fuerce explícitamente. No está portado a
+este bridge todavía, pero es la referencia más cercana a "reuso de modelo con
+chequeo de factibilidad" que ya funciona en la práctica — vale la pena mirarlo antes
+de diseñar desde cero.
+
 ## Pendiente de verificar antes de implementar
 
 - Comportamiento real de LM Studio con requests concurrentes contra el mismo modelo

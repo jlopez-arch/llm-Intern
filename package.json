@@ -1,7 +1,7 @@
 {
   "name": "mcp-lm-studio",
-  "version": "0.2.0",
-  "description": "MCP server that exposes a local LM Studio model as tools (\"the intern\"), for delegating bulk/mechanical work out of Claude Code and Codex.",
+  "version": "0.3.0",
+  "description": "MCP server that exposes a local LM Studio model as tools (\"the intern\"), for delegating bulk/mechanical work out of Claude Code, Codex and OpenClaw.",
   "license": "MIT",
   "repository": {
     "type": "git",
