@@ -169,3 +169,5 @@ Variables de entorno opcionales (todas tienen default):
 ## Licencia
 
 MIT — ver [`LICENSE`](LICENSE).
+
+## PRUEBA DE GITHUB JCL
