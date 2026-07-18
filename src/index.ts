@@ -224,9 +224,17 @@ server.registerTool(
         ),
       temperature: z.number().min(0).max(2).optional().default(0.7),
       max_tokens: z.number().int().positive().optional().default(2048),
+      response_schema: z
+        .record(z.any())
+        .optional()
+        .describe(
+          "JSON Schema opcional. Si se pasa, LM Studio fuerza (grammar-constrained) que la respuesta sea JSON " +
+            "válido contra ese schema — no depende de que el modelo 'obedezca' la instrucción en el prompt. " +
+            "Usalo para extracción de datos donde necesitás campos exactos (ej. {tools_called, metrics, tool_errors})."
+        ),
     },
   },
-  async ({ prompt, system, model, temperature, max_tokens }) => {
+  async ({ prompt, system, model, temperature, max_tokens, response_schema }) => {
     const messages = [
       ...(system ? [{ role: "system", content: system }] : []),
       { role: "user", content: prompt },
@@ -244,6 +252,9 @@ server.registerTool(
         // para desactivar el "thinking" de modelos tipo Qwen3. Ver nota en la
         // descripción de esta tool sobre la limitación conocida.
         chat_template_kwargs: { enable_thinking: false },
+        ...(response_schema
+          ? { response_format: { type: "json_schema", json_schema: { name: "response", strict: true, schema: response_schema } } }
+          : {}),
       }),
     })) as {
       choices?: Array<{
@@ -289,7 +300,11 @@ server.registerTool(
       "'buscá en el vault X y resumime', 'leé estos archivos y armá un borrador'. Seguí sin usar para tareas " +
       "de alta precisión (bugs/vulnerabilidades, decisiones con impacto real) — el modelo local razona peor " +
       "sobre CUÁNDO y CÓMO usar cada tool, y sobre cuándo parar, que Claude. Verificá el resultado antes de " +
-      "confiar en él (ver regla de costo en feedback_intern_delegation / ~/.codex/AGENTS.md).",
+      "confiar en él (ver regla de costo en feedback_intern_delegation / ~/.codex/AGENTS.md). " +
+      "La respuesta siempre incluye 'tool_trace' (qué tool se llamó, con qué args, y qué devolvió) — para " +
+      "tareas de auditoría/extracción, verificá cada dato del texto contra el trace en vez de confiar en la " +
+      "síntesis del modelo: puede redactar algo plausible con números que no vinieron de ninguna tool. Para " +
+      "forzar formato exacto, usá 'response_schema'.",
     inputSchema: {
       prompt: z.string().describe("La tarea a ejecutar en el modelo local con acceso a tools."),
       mcp_servers: z
@@ -325,9 +340,20 @@ server.registerTool(
         .optional()
         .default(8)
         .describe("Tope de vueltas del loop (llamada al modelo + ejecución de tools) antes de cortar."),
+      response_schema: z
+        .record(z.any())
+        .optional()
+        .describe(
+          "JSON Schema opcional. Si se pasa, después de que el modelo termine su exploración libre (con tools), " +
+            "se hace UNA llamada extra sin tools que le pide reformatear su respuesta como JSON estricto contra " +
+            "ese schema, basado SOLO en lo ya conversado — no se pasa junto con 'tools' porque en la práctica eso " +
+            "hace que el modelo prefiera inventar un JSON plausible antes que llamar la tool (verificado empíricamente). " +
+            "Devuelve el resultado en el campo 'structured' de la respuesta, junto a 'tool_trace' para auditar cada " +
+            "número contra la tool que lo originó — no confíes en el texto libre para datos que necesitás verificar."
+        ),
     },
   },
-  async ({ prompt, mcp_servers, system, model, temperature, max_tokens, max_iterations }, extra) => {
+  async ({ prompt, mcp_servers, system, model, temperature, max_tokens, max_iterations, response_schema }, extra) => {
     const progressToken = extra?._meta?.progressToken;
     const configs = loadLmStudioMcpConfig();
     const missing = mcp_servers.filter((name) => !(name in configs));
@@ -394,6 +420,14 @@ server.registerTool(
         { role: "user", content: prompt },
       ];
       const resolvedModel = await resolveModel(model);
+
+      // Registro de auditoría: qué tool se llamó, con qué args, y qué devolvió
+      // (truncado). Se devuelve siempre junto al texto final — el modelo local
+      // puede redactar una síntesis plausible con números que nunca vinieron de
+      // ninguna tool; con esto el caller puede verificar cada dato en vez de
+      // confiar ciegamente en la prosa. Ver MODELS.md sobre este failure mode.
+      const TRACE_RESULT_MAX_CHARS = 2000;
+      const toolTrace: Array<{ tool: string; args: unknown; result: string; error: boolean }> = [];
 
       let finalText = "";
       let finishedEarly = false;
@@ -462,16 +496,21 @@ server.registerTool(
         for (const call of toolCalls) {
           const routing = toolRouting.get(call.function.name);
           let resultText: string;
+          let args: Record<string, unknown> = {};
+          let traceArgs: unknown = call.function.arguments;
+          let isError = false;
           if (!routing) {
             resultText = `Error: tool "${call.function.name}" no reconocida entre las conectadas.`;
+            isError = true;
           } else {
-            let args: Record<string, unknown> = {};
             let argsOk = true;
             try {
               args = call.function.arguments ? JSON.parse(call.function.arguments) : {};
+              traceArgs = args;
             } catch {
               resultText = `Error: argumentos inválidos (no es JSON): ${call.function.arguments}`;
               argsOk = false;
+              isError = true;
             }
             if (argsOk) {
               try {
@@ -488,8 +527,10 @@ server.registerTool(
                   blocks
                     .map((block) => ("text" in block && typeof block.text === "string" ? block.text : JSON.stringify(block)))
                     .join("\n") || "(sin contenido)";
+                isError = Boolean(result.isError);
               } catch (err) {
                 resultText = `Error ejecutando la tool: ${err instanceof Error ? err.message : String(err)}`;
+                isError = true;
               }
             } else {
               resultText = `Error: argumentos inválidos (no es JSON): ${call.function.arguments}`;
@@ -498,6 +539,15 @@ server.registerTool(
           if (process.env.LM_AGENT_DEBUG) {
             console.error(`[agent-debug] tool_result name=${call.function.name} -> ${resultText.slice(0, 300)}`);
           }
+          toolTrace.push({
+            tool: call.function.name,
+            args: traceArgs,
+            result:
+              resultText.length > TRACE_RESULT_MAX_CHARS
+                ? `${resultText.slice(0, TRACE_RESULT_MAX_CHARS)}… (truncado, ${resultText.length} chars totales)`
+                : resultText,
+            error: isError,
+          });
           messages.push({ role: "tool", tool_call_id: call.id, content: resultText });
         }
       }
@@ -509,7 +559,7 @@ server.registerTool(
           content: [
             {
               type: "text",
-              text: `Se alcanzó el máximo de ${max_iterations} iteraciones sin respuesta final (el modelo seguía pidiendo tools). Subí max_iterations o simplificá la tarea.`,
+              text: `Se alcanzó el máximo de ${max_iterations} iteraciones sin respuesta final (el modelo seguía pidiendo tools). Subí max_iterations o simplificá la tarea.\n\ntool_trace: ${JSON.stringify(toolTrace, null, 2)}`,
             },
           ],
           isError: true,
@@ -521,14 +571,60 @@ server.registerTool(
             {
               type: "text",
               text: "El modelo terminó sin pedir más tools pero devolvió contenido vacío " +
-                "(puede haber gastado el budget de tokens 'pensando' pese a nothink). Probá subir max_tokens.",
+                "(puede haber gastado el budget de tokens 'pensando' pese a nothink). Probá subir max_tokens.\n\n" +
+                `tool_trace: ${JSON.stringify(toolTrace, null, 2)}`,
             },
           ],
           isError: true,
         };
       }
 
-      return { content: [{ type: "text", text: finalText.trim() }] };
+      // Si pidieron response_schema, hacer UNA llamada extra sin 'tools' para
+      // forzar el formato — combinar response_format+tools en el loop hace que
+      // el modelo prefiera inventar un JSON plausible antes que llamar la tool
+      // pedida (verificado empíricamente), así que la constricción de schema se
+      // aplica recién acá, sobre la conversación ya completa.
+      let structured: unknown = null;
+      let structuredError: string | null = null;
+      if (response_schema) {
+        try {
+          const structuringMessages = [
+            ...messages,
+            { role: "assistant", content: finalText },
+            {
+              role: "user",
+              content:
+                "Reformateá tu respuesta anterior como JSON estricto contra el schema dado. Basate SOLO en los " +
+                "datos que ya reuniste en esta conversación (tus propias tool calls de arriba) — si algo no lo " +
+                "verificaste con una tool, no lo incluyas.",
+            },
+          ];
+          const structData = (await lmFetch("/chat/completions", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              model: resolvedModel,
+              messages: structuringMessages,
+              temperature: 0,
+              max_tokens,
+              chat_template_kwargs: { enable_thinking: false },
+              response_format: { type: "json_schema", json_schema: { name: "response", strict: true, schema: response_schema } },
+            }),
+          })) as { choices?: Array<{ message?: { content?: string } }> };
+          const structText = structData.choices?.[0]?.message?.content ?? "";
+          structured = structText ? JSON.parse(structText) : null;
+        } catch (err) {
+          structuredError = err instanceof Error ? err.message : String(err);
+        }
+      }
+
+      const envelope = {
+        final_text: finalText.trim(),
+        structured,
+        ...(structuredError ? { structured_error: structuredError } : {}),
+        tool_trace: toolTrace,
+      };
+      return { content: [{ type: "text", text: JSON.stringify(envelope, null, 2) }] };
     } finally {
       await Promise.all(connected.map(({ client }) => client.close().catch(() => {})));
     }

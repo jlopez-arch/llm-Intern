@@ -41,14 +41,14 @@ criterio y no sea "mandarle cualquier cosa al modelo chico". Ver [`MODELS.md`](M
 ## Qué incluye
 
 - **`src/index.ts`** — el servidor MCP (Node/TypeScript). Cuatro tools:
-  - `lm_studio_generate` — texto/código sin herramientas, todo el contexto va en el prompt.
-  - `lm_studio_agent` — el modelo local con acceso real a tus otros MCPs (`~/.lmstudio/mcp.json`), loop de agente completo.
+  - `lm_studio_generate` — texto/código sin herramientas, todo el contexto va en el prompt. Soporta `response_schema` (JSON Schema) para forzar salida estructurada.
+  - `lm_studio_agent` — el modelo local con acceso real a tus otros MCPs (`~/.lmstudio/mcp.json`), loop de agente completo. Devuelve `tool_trace` (qué tool se llamó, con qué args, qué devolvió) para auditar cada dato de la respuesta, y soporta `response_schema` para forzar el formato final. Ver [`docs/audit-tasks-pattern.md`](docs/audit-tasks-pattern.md) para el patrón de uso en tareas de extracción/auditoría.
   - `lm_studio_list_models` — qué hay descargado/cargado en LM Studio.
   - `lm_studio_list_mcp_servers` — qué MCPs puede usar `lm_studio_agent`.
 - **`.claude/skills/intern/`** — Skill de Claude Code (`/intern`) con el protocolo completo.
 - **`templates/`** — snippets para pegar en tu `~/.claude/CLAUDE.md`, `~/.codex/AGENTS.md` u openclaw.json (delegación automática, sin invocar nada a mano), más un `mcp.json` de ejemplo y una plantilla de log de uso.
 - **`MODELS.md`** — qué modelos usar para qué tipo de tarea, con los modelos que ya pasaron por este setup.
-- **`docs/`** — guías de instalación paso a paso por herramienta (Claude Code, Codex, OpenClaw, LM Studio) + [roadmap](docs/roadmap.md) de mejoras en diseño.
+- **`docs/`** — guías de instalación por herramienta (Claude Code, Codex, OpenClaw, LM Studio) + [patrón de auditoría/extracción](docs/audit-tasks-pattern.md) + [roadmap](docs/roadmap.md) de mejoras en diseño.
 
 ## Integraciones
 
