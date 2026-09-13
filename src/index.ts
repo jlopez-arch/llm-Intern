@@ -13,6 +13,13 @@ const BASE_URL = process.env.LM_STUDIO_BASE_URL ?? "http://localhost:1234/v1";
 const ORIGIN = BASE_URL.replace(/\/v1\/?$/, "");
 const NATIVE_MODELS_URL = `${ORIGIN}/api/v0/models`;
 
+// Si BASE_URL apunta a un gateway (ej. LiteLLM) en vez de a LM Studio directo,
+// hace falta autenticarse — LM Studio directo no usa esto (queda undefined).
+const API_KEY = process.env.LM_STUDIO_API_KEY;
+function authHeaders(): Record<string, string> {
+  return API_KEY ? { Authorization: `Bearer ${API_KEY}` } : {};
+}
+
 // Modelo por defecto cuando no hay nada cargado en LM Studio. Si le asignás un
 // preset propio como default de carga en LM Studio (~/.lmstudio/.internal/
 // user-concrete-model-default-config/<model-id>.json — ver docs/lm-studio-setup.md),
@@ -45,12 +52,30 @@ async function fetchJson(url: string, init?: RequestInit) {
 }
 
 async function lmFetch(path: string, init?: RequestInit) {
-  return fetchJson(`${BASE_URL}${path}`, init);
+  return fetchJson(`${BASE_URL}${path}`, {
+    ...init,
+    headers: { ...authHeaders(), ...(init?.headers as Record<string, string> | undefined) },
+  });
 }
 
+// /api/v0/models es una API NATIVA de LM Studio (da state: loaded/not-loaded),
+// no forma parte del estándar OpenAI — un gateway OpenAI-compatible como
+// LiteLLM no la expone y devuelve 404/error. En ese caso cae a /v1/models
+// (estándar, sí soportado por el gateway) y se pierde la detección de "ya
+// cargado en memoria" — resolveModel() sigue funcionando, solo sin esa
+// preferencia extra.
 async function listNativeModels(): Promise<NativeModel[]> {
-  const data = (await fetchJson(NATIVE_MODELS_URL)) as { data?: NativeModel[] };
-  return data.data ?? [];
+  try {
+    const data = (await fetchJson(NATIVE_MODELS_URL, { headers: authHeaders() })) as {
+      data?: NativeModel[];
+    };
+    return data.data ?? [];
+  } catch {
+    const data = (await fetchJson(`${BASE_URL}/models`, { headers: authHeaders() })) as {
+      data?: Array<{ id: string }>;
+    };
+    return (data.data ?? []).map((m) => ({ id: m.id }));
+  }
 }
 
 // Prefiere un modelo ya cargado en memoria (state: "loaded") antes que dejar
